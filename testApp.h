@@ -11,6 +11,8 @@
 //#define _USE_LIVE_VIDEO		// uncomment this to use a live camera
 								// otherwise, we'll use a movie file
 
+#define MAX_FEATURES 1000
+
 class testApp : public ofBaseApp{
 
 	public:
@@ -44,7 +46,7 @@ class testApp : public ofBaseApp{
 
 		char effect = '1';
 		char scale ='1';
-		float scaleFloat = 1;
+		float scaleFloat = 0.7;
 
         void openMovie (string result);
         int w, h, sw, sh;
@@ -69,10 +71,12 @@ class testApp : public ofBaseApp{
 
         void goodOpticalFlow(cv::Mat color_img);
         void simpleOpticalFlow(cv::Mat color_img);
+        void denseOpticalFlow(cv::Mat color_img);
         bool firstFrameOpticalFlow = true;
         cv::Mat lastImgOpticalFlow;
         cv::GoodFeaturesToTrackDetector goodFeatureDetector;
         cv::SimpleBlobDetector simpleBlobDetector;
+        cv::DenseFeatureDetector denseFeatureDetector;
 
         std::vector<cv::Point2f> lastPointsOpticalFlow;
         std::vector<cv::KeyPoint> keyPointsOpticalFlow;

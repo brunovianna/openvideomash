@@ -72,7 +72,7 @@ void testApp::draw(){
 
         cv::Mat resized;
         resized = myResize (frame, scaleFloat);
-        ofIm.setFromPixels(resized.data,w*scaleFloat,h*scaleFloat, OF_IMAGE_COLOR);
+        ofIm.setFromPixels(resized.data,(int)w*scaleFloat,(int)h*scaleFloat, OF_IMAGE_COLOR);
 
         switch (effect) {
             case 'f':
@@ -87,6 +87,13 @@ void testApp::draw(){
                 {
 
                     simpleOpticalFlow(resized);
+                }
+                break;
+            case 'd':
+                //ofIm.draw(0,0);
+                {
+
+                    denseOpticalFlow(resized);
                 }
                 break;
             case 't':
@@ -105,6 +112,7 @@ void testApp::draw(){
                 blobFinderCV(resized);
                 break;
             case 'g':
+
                 ofIm = ofImage(bgExtract(resized));
                 ofIm.draw(0,0);
                 break;
@@ -136,6 +144,7 @@ void testApp::keyPressed(int key){
     switch (key) {
         case '0':
 			bLearnBakground = true;
+			effect = '0';
 			break;
 		case '=':
 			threshold ++;
@@ -211,19 +220,24 @@ void testApp::keyPressed(int key){
         case 's':
         case 'S':
             {
-                lastPointsOpticalFlow = std::vector<cv::Point2f>(500);
+                bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 26.0, true);
+
+                lastPointsOpticalFlow = std::vector<cv::Point2f>(MAX_FEATURES);
 
                 cv::SimpleBlobDetector::Params params;
-                params.minThreshold = 100.0f;
-                params.minDistBetweenBlobs = 1.0f;
-                params.filterByInertia = false;
+                params.minThreshold = 50.0f; //ants 50
+                params.maxThreshold = 100.0f; //ants 100
+                //params.minDistBetweenBlobs = 5.0f; //ants 0
+                params.filterByInertia = true;
+                params.maxInertiaRatio = 10.0f; //ants 10
+                //params.minInertiaRatio = 1.0f; //ants 0
                 params.filterByConvexity = false;
-                params.filterByColor = false;
-                params.blobColor = 0;
+                params.filterByColor = true;
+                params.blobColor = 255.0f; //ants 255
                 params.filterByCircularity = false;
                 params.filterByArea = true;
-                params.minArea = 20.0f;
-                params.maxArea = 5000.0f;
+                params.minArea = 20.0f;  //ants 20
+                params.maxArea = 150.0f; //ants 150
                 simpleBlobDetector  = cv::SimpleBlobDetector(params);
 
                 effect = 's';
@@ -235,9 +249,22 @@ void testApp::keyPressed(int key){
         case 'F':
             {
 
-                lastPointsOpticalFlow = std::vector<cv::Point2f>(500);
-                goodFeatureDetector = cv::GoodFeaturesToTrackDetector ( 500 );
+                bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 26.0, true);
+                lastPointsOpticalFlow = std::vector<cv::Point2f>(MAX_FEATURES);
+                goodFeatureDetector = cv::GoodFeaturesToTrackDetector (70);
                 effect = 'f';
+                ofClear(0);
+            }
+            break;
+
+        case 'd':
+        case 'D':
+            {
+
+                bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 26.0, true);
+                lastPointsOpticalFlow = std::vector<cv::Point2f>(MAX_FEATURES);
+                denseFeatureDetector = cv::DenseFeatureDetector ();
+                effect = 'd';
                 ofClear(0);
             }
             break;
@@ -287,7 +314,12 @@ void testApp::keyPressed(int key){
             //cv::Mat bgFrame(sh,sw,CV_8UC1);
             //cv::cvtColor(myResize(colorFrame, scaleFloat), bgFrame, CV_RGB2GRAY);
 
+
             effect = 'g';
+            ofBackground(0);
+            //ofClear(0);
+            ofEnableBlendMode(OF_BLENDMODE_SCREEN);
+
             break;
         }
         case '1':
@@ -313,6 +345,14 @@ void testApp::keyPressed(int key){
             sw = (int)w * 0.25;
             sh = (int)h * 0.25;
             break;
+
+
+        case '7':
+            scaleFloat =  0.7f;
+            sw = (int)w * 0.7f;
+            sh = (int)h * 0.7f;
+            break;
+
 
     }
 
@@ -533,17 +573,12 @@ ofPixelsRef testApp::bgExtract (cv::Mat color_img) {
     int tw = color_img.cols;
 
     cv::Mat imgReturn, bgMask;
-    cv::Mat img, resizeBgFrame, greyBgFrame, blurred;
-    cv::Mat grey(th,tw,CV_8UC1,50);
+    cv::Mat grey_img, blurred;
 
-    cv::cvtColor(color_img, img, CV_RGB2GRAY);
-    cv::cvtColor(bgFrame, greyBgFrame, CV_RGB2GRAY);
+    cv::cvtColor(color_img, grey_img, CV_RGB2GRAY);
 
-    resizeBgFrame = myResize(greyBgFrame, scaleFloat);
 
-    //cv::cvtColor(resizeBgFrame, greyBgFrame, CV_RGB2GRAY);
-
-    bgSubtractor(resizeBgFrame,bgMask);
+    bgSubtractor(grey_img,bgMask);
 
     //adaptiveThreshold(img, imgBinary, 255, cv::ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY,3,5.0 );
     //cv::absdiff (img,resizeBgFrame, result);
@@ -613,9 +648,9 @@ void testApp::blobTracker (cv::Mat color_img) {
     contourFinder.findContours( ofxGrIm, 4, maxSize, 30, true );
     for(int i = 0; i < contourFinder.nBlobs; i++) {
         ofxCvBlob blob = contourFinder.blobs.at(i);
-        if (lastBlobs.size() > 0)
-            ofLine (lastBlobs.at(i).centroid.x, lastBlobs.at(i).centroid.y,
-                    blob.centroid.x,blob.centroid.y);
+        //if (lastBlobs.size() > 0)
+         //   ofLine (lastBlobs.at(i).centroid.x, lastBlobs.at(i).centroid.y,
+         //           blob.centroid.x,blob.centroid.y);
 
         //cv::Point p (blob.centroid.x, blob.centroid.y );
         //cv::circle(color_img,p,5, cv::Scalar(230,230,230));
@@ -661,7 +696,7 @@ void testApp::blobFinderCV (cv::Mat color_img) {
 
 
 
-        ofCircle (x, y, 4);
+        ofCircle (x, y, 1);
 
 
     }
@@ -674,15 +709,16 @@ void testApp::goodOpticalFlow (cv::Mat color_img) {
     vector<uchar> status;
     vector<float> errors;
 
-    cv::Mat img;
+    cv::Mat grey_img, bgMask;
 
     // beautiful glitch when initiliaze this way cv::Mat blank(h,w,CV_8UC3);
     //cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
 
-    cv::cvtColor(color_img, img, CV_RGB2GRAY);
+    cv::cvtColor(color_img, grey_img, CV_RGB2GRAY);
+    bgSubtractor(grey_img,bgMask);
 
     if (firstFrameOpticalFlow) {
-        lastImgOpticalFlow = img.clone();
+        lastImgOpticalFlow = bgMask.clone();
         firstFrameOpticalFlow = false;
     } else {
         //lastpoints = points;
@@ -692,14 +728,14 @@ void testApp::goodOpticalFlow (cv::Mat color_img) {
             lastPointsOpticalFlow[i].x = keyPointsOpticalFlow[i].pt.x;
             lastPointsOpticalFlow[i].y = keyPointsOpticalFlow[i].pt.y;
         }
-        std::vector<cv::Point2f> points(500); // 500 corners as max
+        std::vector<cv::Point2f> points(MAX_FEATURES); // 500 corners as max
 
         cv::TermCriteria tc (cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
 
-        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,img,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11),
+        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,bgMask,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11),
                                  3,tc,0,0.1);
 
-        lastImgOpticalFlow= img.clone();
+        lastImgOpticalFlow= bgMask.clone();
 
         for (unsigned int i=0; i<points.size(); i++ ) {
             if( status[i]==0|| errors[i]>550 ) {
@@ -713,7 +749,7 @@ void testApp::goodOpticalFlow (cv::Mat color_img) {
 
             ofVec2f startPoint (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y);
             ofVec2f endPoint ( points[i].x, points[i].y);
-            if (startPoint.distance(endPoint) <  color_img.cols /20.0)
+            if (startPoint.distance(endPoint) <  color_img.cols /50.0)
                 ofLine (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y, points[i].x, points[i].y);
         }
 
@@ -734,15 +770,16 @@ void testApp::simpleOpticalFlow (cv::Mat color_img) {
     vector<uchar> status;
     vector<float> errors;
 
-    cv::Mat img;
+    cv::Mat grey_img, bgMask;
 
     // beautiful glitch when initiliaze this way cv::Mat blank(h,w,CV_8UC3);
     //cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
 
-    cv::cvtColor(color_img, img, CV_RGB2GRAY);
+    cv::cvtColor(color_img, grey_img, CV_RGB2GRAY);
+    bgSubtractor(grey_img,bgMask);
 
     if (firstFrameOpticalFlow) {
-        lastImgOpticalFlow = img.clone();
+        lastImgOpticalFlow = bgMask.clone();
         firstFrameOpticalFlow = false;
     } else {
         //lastpoints = points;
@@ -752,14 +789,14 @@ void testApp::simpleOpticalFlow (cv::Mat color_img) {
             lastPointsOpticalFlow[i].x = keyPointsOpticalFlow[i].pt.x;
             lastPointsOpticalFlow[i].y = keyPointsOpticalFlow[i].pt.y;
         }
-        std::vector<cv::Point2f> points(500); // 500 corners as max
+        std::vector<cv::Point2f> points(MAX_FEATURES); // 500 corners as max
 
         cv::TermCriteria tc (cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
 
-        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,img,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11),
+        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,bgMask,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11),
                                  3,tc,0,0.1);
 
-        lastImgOpticalFlow= img.clone();
+        lastImgOpticalFlow= bgMask.clone();
 
         for (unsigned int i=0; i<points.size(); i++ ) {
             if( status[i]==0|| errors[i]>550 ) {
@@ -773,7 +810,68 @@ void testApp::simpleOpticalFlow (cv::Mat color_img) {
 
             ofVec2f startPoint (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y);
             ofVec2f endPoint ( points[i].x, points[i].y);
-            if (startPoint.distance(endPoint) <  color_img.cols /20.0)
+            if (startPoint.distance(endPoint) <  color_img.cols /50.0)
+                ofLine (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y, points[i].x, points[i].y);
+        }
+
+
+
+    }
+
+    //ofImTmp.setFromPixels(blank.data,blank.cols,blank.rows, OF_IMAGE_COLOR);
+
+    //return ofImTmp.getPixelsRef();
+
+
+}
+
+void testApp::denseOpticalFlow (cv::Mat color_img) {
+
+
+    vector<uchar> status;
+    vector<float> errors;
+
+    cv::Mat grey_img, bgMask;
+
+    // beautiful glitch when initiliaze this way cv::Mat blank(h,w,CV_8UC3);
+    //cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
+
+    cv::cvtColor(color_img, grey_img, CV_RGB2GRAY);
+    bgSubtractor(grey_img,bgMask);
+
+    if (firstFrameOpticalFlow) {
+        lastImgOpticalFlow = bgMask.clone();
+        firstFrameOpticalFlow = false;
+    } else {
+        //lastpoints = points;
+        denseFeatureDetector.detect( lastImgOpticalFlow, keyPointsOpticalFlow );
+        //points.resize(keypoints.size());
+        for (unsigned int i=0;i<keyPointsOpticalFlow.size();i++) {
+            lastPointsOpticalFlow[i].x = keyPointsOpticalFlow[i].pt.x;
+            lastPointsOpticalFlow[i].y = keyPointsOpticalFlow[i].pt.y;
+        }
+        std::vector<cv::Point2f> points(MAX_FEATURES);
+
+        cv::TermCriteria tc (cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
+
+        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,bgMask,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11),
+                                 3,tc,0,0.1);
+
+        lastImgOpticalFlow= bgMask.clone();
+
+        for (unsigned int i=0; i<points.size(); i++ ) {
+            if( status[i]==0|| errors[i]>550 ) {
+                continue;
+            }
+
+            //cv::Point p = lastpoints[i];
+            //cv::Point q = points[i];
+            //line(blank, p, q, cv::Scalar(230,230,230),1,CV_AA);
+            //circle (color_img, p, 3, cv::Scalar(255),1,CV_AA);
+
+            ofVec2f startPoint (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y);
+            ofVec2f endPoint ( points[i].x, points[i].y);
+            if (startPoint.distance(endPoint) <  color_img.cols /50.0)
                 ofLine (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y, points[i].x, points[i].y);
         }
 
