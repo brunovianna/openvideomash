@@ -34,7 +34,21 @@ void testApp::setup(){
         openMovie (fileName);
 	}
 
-    detector = cv::GoodFeaturesToTrackDetector ( 500 );
+    //detector = cv::GoodFeaturesToTrackDetector ( 500 );
+
+    cv::SimpleBlobDetector::Params params;
+    //params.
+    params.minDistBetweenBlobs = 1.0f;
+    params.filterByInertia = false;
+    params.filterByConvexity = false;
+    params.filterByColor = false;
+    params.blobColor = 0;
+    params.filterByCircularity = false;
+    params.filterByArea = true;
+    params.minArea = 20.0f;
+    params.maxArea = 5000.0f;
+
+    detector = cv::SimpleBlobDetector ( params );
     lastPointsOpticalFlow = std::vector<cv::Point2f>(500);
 
 
@@ -104,6 +118,7 @@ void testApp::draw(){
 
         switch (effect) {
             case 'p':
+                //ofIm.draw(0,0);
                 opticalFlow(resized);
 
                 break;
@@ -675,7 +690,7 @@ void testApp::opticalFlow (cv::Mat color_img) {
     cv::Mat img;
 
     // beautiful glitch when initiliaze this way cv::Mat blank(h,w,CV_8UC3);
-    cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
+    //cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
 
     cv::cvtColor(color_img, img, CV_RGB2GRAY);
 
@@ -692,7 +707,10 @@ void testApp::opticalFlow (cv::Mat color_img) {
         }
         std::vector<cv::Point2f> points(500); // 500 corners as max
 
-        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,img,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11));
+        cv::TermCriteria tc (cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
+
+        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,img,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11),
+                                 3,tc,0,0.1);
 
         lastImgOpticalFlow= img.clone();
 
@@ -706,8 +724,10 @@ void testApp::opticalFlow (cv::Mat color_img) {
             //line(blank, p, q, cv::Scalar(230,230,230),1,CV_AA);
             //circle (color_img, p, 3, cv::Scalar(255),1,CV_AA);
 
-
-            ofLine (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y, points[i].x, points[i].y);
+            ofVec2f startPoint (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y);
+            ofVec2f endPoint ( points[i].x, points[i].y);
+            if (startPoint.distance(endPoint) <  color_img.cols /20.0)
+                ofLine (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y, points[i].x, points[i].y);
         }
 
 

@@ -70,7 +70,8 @@ class testApp : public ofBaseApp{
         void opticalFlow(cv::Mat color_img);
         bool firstFrameOpticalFlow = true;
         cv::Mat lastImgOpticalFlow;
-        cv::GoodFeaturesToTrackDetector detector;
+        //cv::GoodFeaturesToTrackDetector detector;
+        cv::SimpleBlobDetector detector;
         std::vector<cv::Point2f> lastPointsOpticalFlow;
         std::vector<cv::KeyPoint> keyPointsOpticalFlow;
 
