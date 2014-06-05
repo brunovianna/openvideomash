@@ -65,8 +65,10 @@ class testApp : public ofBaseApp{
 
         ofPixelsRef bgExtract(cv::Mat color_img);
         void blobTracker(cv::Mat color_img);
-        ofPixelsRef blobFinderCV(cv::Mat color_img);
+        void blobFinderCV(cv::Mat color_img);
         cv::BackgroundSubtractorMOG2 bgSubtractor;
         vector<ofxCvBlob>  lastBlobs;
+
+
 };
 
