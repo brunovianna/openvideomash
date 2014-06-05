@@ -42,7 +42,7 @@ class testApp : public ofBaseApp{
 		int 				threshold;
 		bool				bLearnBakground;
 
-		char effect = 'p';
+		char effect = '1';
 		char scale ='1';
 		float scaleFloat = 1;
 
@@ -66,6 +66,14 @@ class testApp : public ofBaseApp{
         ofPixelsRef bgExtract(cv::Mat color_img);
         void blobTracker(cv::Mat color_img);
         void blobFinderCV(cv::Mat color_img);
+
+        void opticalFlow(cv::Mat color_img);
+        bool firstFrameOpticalFlow = true;
+        cv::Mat lastImgOpticalFlow;
+        cv::GoodFeaturesToTrackDetector detector;
+        std::vector<cv::Point2f> lastPointsOpticalFlow;
+        std::vector<cv::KeyPoint> keyPointsOpticalFlow;
+
         cv::BackgroundSubtractorMOG2 bgSubtractor;
         vector<ofxCvBlob>  lastBlobs;
 

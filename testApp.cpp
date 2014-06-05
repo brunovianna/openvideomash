@@ -34,6 +34,8 @@ void testApp::setup(){
         openMovie (fileName);
 	}
 
+    detector = cv::GoodFeaturesToTrackDetector ( 500 );
+    lastPointsOpticalFlow = std::vector<cv::Point2f>(500);
 
 
 }
@@ -102,8 +104,8 @@ void testApp::draw(){
 
         switch (effect) {
             case 'p':
-                //ofIm = ofImage(opticalFlow(resized));
-                ofIm.draw(0,0);
+                opticalFlow(resized);
+
                 break;
             case 't':
                 //ofIm = ofImage(discreteFourierTransform(resized));
@@ -125,7 +127,8 @@ void testApp::draw(){
                 ofIm.draw(0,0);
                 break;
 
-            //default:
+            default:
+                ofIm.draw(0,0);
 
 
             }
@@ -230,8 +233,10 @@ void testApp::keyPressed(int key){
 
         case 'p':
         case 'P':
-
-            effect = 'p';
+            {
+                effect = 'p';
+                ofClear(0);
+            }
             break;
 
 
@@ -659,17 +664,61 @@ void testApp::blobFinderCV (cv::Mat color_img) {
 
     }
 
+}
+
+void testApp::opticalFlow (cv::Mat color_img) {
+
+
+    vector<uchar> status;
+    vector<float> errors;
+
+    cv::Mat img;
+
+    // beautiful glitch when initiliaze this way cv::Mat blank(h,w,CV_8UC3);
+    cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
+
+    cv::cvtColor(color_img, img, CV_RGB2GRAY);
+
+    if (firstFrameOpticalFlow) {
+        lastImgOpticalFlow = img.clone();
+        firstFrameOpticalFlow = false;
+    } else {
+        //lastpoints = points;
+        detector.detect( lastImgOpticalFlow, keyPointsOpticalFlow );
+        //points.resize(keypoints.size());
+        for (unsigned int i=0;i<keyPointsOpticalFlow.size();i++) {
+            lastPointsOpticalFlow[i].x = keyPointsOpticalFlow[i].pt.x;
+            lastPointsOpticalFlow[i].y = keyPointsOpticalFlow[i].pt.y;
+        }
+        std::vector<cv::Point2f> points(500); // 500 corners as max
+
+        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,img,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11));
+
+        lastImgOpticalFlow= img.clone();
+
+        for (unsigned int i=0; i<points.size(); i++ ) {
+            if( status[i]==0|| errors[i]>550 ) {
+                continue;
+            }
+
+            //cv::Point p = lastpoints[i];
+            //cv::Point q = points[i];
+            //line(blank, p, q, cv::Scalar(230,230,230),1,CV_AA);
+            //circle (color_img, p, 3, cv::Scalar(255),1,CV_AA);
+
+
+            ofLine (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y, points[i].x, points[i].y);
+        }
 
 
 
+    }
 
-//    findContours(imgBinary, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-//
-//    drawContours( color_img, contours, 2
-//                 , cv::Scalar(0,255,0) );
-//
-    //ofImTmp.setFromPixels(color_img.data,color_img.cols,color_img.rows, OF_IMAGE_COLOR);
+    //ofImTmp.setFromPixels(blank.data,blank.cols,blank.rows, OF_IMAGE_COLOR);
 
     //return ofImTmp.getPixelsRef();
 
+
 }
+
+
