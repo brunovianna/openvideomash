@@ -117,6 +117,12 @@ void testApp::draw(){
             case 'b':
                 blobTracker(resized);
                 break;
+            case 'c':
+                {
+                    ofIm = ofImage(blobFinderCV(resized));
+                    ofIm.draw(0,0);
+                }
+                break;
             case 'g':
                 ofIm = ofImage(bgExtract(resized));
                 ofIm.draw(0,0);
@@ -231,6 +237,8 @@ void testApp::keyPressed(int key){
             effect = 'p';
             break;
 
+
+
         case 'b':
         case 'B':
 
@@ -245,7 +253,9 @@ void testApp::keyPressed(int key){
                 effect = 'b';
             }
             break;
-
+        case 'c':
+            effect = 'c';
+            break;
         case 't':
         case 'T':
             effect = 't';
@@ -448,6 +458,12 @@ void testApp::exportMovie() {
                         break;
 
                         }
+                    case 'c':
+                        {
+                            ofIm = ofImage(blobFinderCV(resized));
+                            ofIm.draw(0,0);
+                        }
+
                     case 'l':
                         //ofIm = ofImage(houghLinesS(resized));
                         break;
@@ -605,4 +621,42 @@ void testApp::blobTracker (cv::Mat color_img) {
 
     //return ofImTmp.getPixelsRef();
     //return ofxCoIm.getPixelsRef();
+}
+
+
+ofPixelsRef testApp::blobFinderCV (cv::Mat color_img) {
+
+    cv::Mat img, imgBinary;
+
+    cv::cvtColor(color_img, img, CV_RGB2GRAY);
+
+
+    //adaptiveThreshold(img, imgBinary, 255, cv::ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY,3,5.0 );
+    cv::threshold(img, imgBinary, 10,255,cv::THRESH_BINARY);
+
+    vector < vector<cv::Point> > contours;
+
+    vector<cv::Vec4i> hierarchy;
+    cv::findContours( imgBinary, contours, hierarchy,CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE );
+    // iterate through all the top-level contours,
+    // draw each connected component with its own random color
+    int idx = 0;
+    for( ; idx >= 0; idx = hierarchy[idx][0] )
+    {
+        cv::Scalar color( 255,255,255);
+        cv::drawContours( color_img, contours, idx, color, 2, 8, hierarchy );
+    }
+
+
+
+
+//    findContours(imgBinary, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+//
+//    drawContours( color_img, contours, 2
+//                 , cv::Scalar(0,255,0) );
+//
+    ofImTmp.setFromPixels(color_img.data,color_img.cols,color_img.rows, OF_IMAGE_COLOR);
+
+    return ofImTmp.getPixelsRef();
+
 }
