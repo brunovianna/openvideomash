@@ -30,7 +30,7 @@ int main( ){
 	//ofSetupOpenGL(1920,1080, OF_WINDOW);			// <-------- setup the GL context
 
 
-    ofSetupOpenGL(1280,720,OF_WINDOW);
+    ofSetupOpenGL(1280,800,OF_WINDOW);
 
 
     ofSleepMillis(1000);
@@ -40,7 +40,7 @@ int main( ){
     int focus_state;
     XGetInputFocus(display, &focus_window, &focus_state);
     noborders(display,focus_window);
-    XMoveWindow(display,focus_window,1280,720);
+    XMoveWindow(display,focus_window,1280,800);
     ofSetWindowPosition(0,0);
 
 

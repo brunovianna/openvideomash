@@ -67,11 +67,13 @@ class testApp : public ofBaseApp{
         void blobTracker(cv::Mat color_img);
         void blobFinderCV(cv::Mat color_img);
 
-        void opticalFlow(cv::Mat color_img);
+        void goodOpticalFlow(cv::Mat color_img);
+        void simpleOpticalFlow(cv::Mat color_img);
         bool firstFrameOpticalFlow = true;
         cv::Mat lastImgOpticalFlow;
-        //cv::GoodFeaturesToTrackDetector detector;
-        cv::SimpleBlobDetector detector;
+        cv::GoodFeaturesToTrackDetector goodFeatureDetector;
+        cv::SimpleBlobDetector simpleBlobDetector;
+
         std::vector<cv::Point2f> lastPointsOpticalFlow;
         std::vector<cv::KeyPoint> keyPointsOpticalFlow;
 

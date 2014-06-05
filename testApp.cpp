@@ -34,66 +34,24 @@ void testApp::setup(){
         openMovie (fileName);
 	}
 
-    //detector = cv::GoodFeaturesToTrackDetector ( 500 );
 
-    cv::SimpleBlobDetector::Params params;
-    //params.
-    params.minDistBetweenBlobs = 1.0f;
-    params.filterByInertia = false;
-    params.filterByConvexity = false;
-    params.filterByColor = false;
-    params.blobColor = 0;
-    params.filterByCircularity = false;
-    params.filterByArea = true;
-    params.minArea = 20.0f;
-    params.maxArea = 5000.0f;
 
-    detector = cv::SimpleBlobDetector ( params );
-    lastPointsOpticalFlow = std::vector<cv::Point2f>(500);
 
+
+
+    cout << "f - optical flow good features \n ";
+    cout << "s - optical flow simple blob \n";
+    cout << "b - blob tracker \n";
+    cout << "c - blob finder cv \n";
+    cout << "g - background extractor \n";
 
 }
 
 //--------------------------------------------------------------
 void testApp::update(){
+
     if (mMovie.isLoaded())
         mMovie.update();
-
-
-//	ofBackground(100,100,100);
-//
-//    bool bNewFrame = false;
-//
-//	#ifdef _USE_LIVE_VIDEO
-//       vidGrabber.update();
-//	   bNewFrame = vidGrabber.isFrameNew();
-//    #else
-//        vidPlayer.update();
-//        bNewFrame = vidPlayer.isFrameNew();
-//	#endif
-//
-//	if (bNewFrame){
-//
-//		#ifdef _USE_LIVE_VIDEO
-//            colorImg.setFromPixels(vidGrabber.getPixels(), 320,240);
-//	    #else
-//            colorImg.setFromPixels(vidPlayer.getPixels(), 1280,720);
-//        #endif
-//
-//        grayImage = colorImg;
-//		if (bLearnBakground == true){
-//			grayBg = grayImage;		// the = sign copys the pixels from grayImage into grayBg (operator overloading)
-//			bLearnBakground = false;
-//		}
-//
-//		// take the abs value of the difference between background and incoming and then threshold:
-//		grayDiff.absDiff(grayBg, grayImage);
-//		grayDiff.threshold(threshold);
-//
-//		// find contours which are between the size of 20 pixels and 1/3 the w*h pixels.
-//		// also, find holes is set to true so we will get interior contours as well....
-//		//contourFinder.findContours(grayDiff, 20, (340*240)/3, 10, true);	// find holes
-//	}
 
 }
 
@@ -117,10 +75,19 @@ void testApp::draw(){
         ofIm.setFromPixels(resized.data,w*scaleFloat,h*scaleFloat, OF_IMAGE_COLOR);
 
         switch (effect) {
-            case 'p':
+            case 'f':
                 //ofIm.draw(0,0);
-                opticalFlow(resized);
+                {
 
+                    goodOpticalFlow(resized);
+                }
+                break;
+            case 's':
+                //ofIm.draw(0,0);
+                {
+
+                    simpleOpticalFlow(resized);
+                }
                 break;
             case 't':
                 //ofIm = ofImage(discreteFourierTransform(resized));
@@ -218,12 +185,6 @@ void testApp::keyPressed(int key){
 
             break;
 
-        case 'f':
-        case 'F':
-
-            //exportFrames();
-
-            break;
 
         case ' ':
             {
@@ -246,14 +207,40 @@ void testApp::keyPressed(int key){
             break;
 
 
-        case 'p':
-        case 'P':
+
+        case 's':
+        case 'S':
             {
-                effect = 'p';
+                lastPointsOpticalFlow = std::vector<cv::Point2f>(500);
+
+                cv::SimpleBlobDetector::Params params;
+                params.minThreshold = 100.0f;
+                params.minDistBetweenBlobs = 1.0f;
+                params.filterByInertia = false;
+                params.filterByConvexity = false;
+                params.filterByColor = false;
+                params.blobColor = 0;
+                params.filterByCircularity = false;
+                params.filterByArea = true;
+                params.minArea = 20.0f;
+                params.maxArea = 5000.0f;
+                simpleBlobDetector  = cv::SimpleBlobDetector(params);
+
+                effect = 's';
                 ofClear(0);
             }
             break;
 
+        case 'f':
+        case 'F':
+            {
+
+                lastPointsOpticalFlow = std::vector<cv::Point2f>(500);
+                goodFeatureDetector = cv::GoodFeaturesToTrackDetector ( 500 );
+                effect = 'f';
+                ofClear(0);
+            }
+            break;
 
 
         case 'b':
@@ -681,7 +668,7 @@ void testApp::blobFinderCV (cv::Mat color_img) {
 
 }
 
-void testApp::opticalFlow (cv::Mat color_img) {
+void testApp::goodOpticalFlow (cv::Mat color_img) {
 
 
     vector<uchar> status;
@@ -699,7 +686,7 @@ void testApp::opticalFlow (cv::Mat color_img) {
         firstFrameOpticalFlow = false;
     } else {
         //lastpoints = points;
-        detector.detect( lastImgOpticalFlow, keyPointsOpticalFlow );
+        goodFeatureDetector.detect( lastImgOpticalFlow, keyPointsOpticalFlow );
         //points.resize(keypoints.size());
         for (unsigned int i=0;i<keyPointsOpticalFlow.size();i++) {
             lastPointsOpticalFlow[i].x = keyPointsOpticalFlow[i].pt.x;
@@ -741,4 +728,63 @@ void testApp::opticalFlow (cv::Mat color_img) {
 
 }
 
+void testApp::simpleOpticalFlow (cv::Mat color_img) {
+
+
+    vector<uchar> status;
+    vector<float> errors;
+
+    cv::Mat img;
+
+    // beautiful glitch when initiliaze this way cv::Mat blank(h,w,CV_8UC3);
+    //cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
+
+    cv::cvtColor(color_img, img, CV_RGB2GRAY);
+
+    if (firstFrameOpticalFlow) {
+        lastImgOpticalFlow = img.clone();
+        firstFrameOpticalFlow = false;
+    } else {
+        //lastpoints = points;
+        simpleBlobDetector.detect( lastImgOpticalFlow, keyPointsOpticalFlow );
+        //points.resize(keypoints.size());
+        for (unsigned int i=0;i<keyPointsOpticalFlow.size();i++) {
+            lastPointsOpticalFlow[i].x = keyPointsOpticalFlow[i].pt.x;
+            lastPointsOpticalFlow[i].y = keyPointsOpticalFlow[i].pt.y;
+        }
+        std::vector<cv::Point2f> points(500); // 500 corners as max
+
+        cv::TermCriteria tc (cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
+
+        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,img,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11),
+                                 3,tc,0,0.1);
+
+        lastImgOpticalFlow= img.clone();
+
+        for (unsigned int i=0; i<points.size(); i++ ) {
+            if( status[i]==0|| errors[i]>550 ) {
+                continue;
+            }
+
+            //cv::Point p = lastpoints[i];
+            //cv::Point q = points[i];
+            //line(blank, p, q, cv::Scalar(230,230,230),1,CV_AA);
+            //circle (color_img, p, 3, cv::Scalar(255),1,CV_AA);
+
+            ofVec2f startPoint (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y);
+            ofVec2f endPoint ( points[i].x, points[i].y);
+            if (startPoint.distance(endPoint) <  color_img.cols /20.0)
+                ofLine (lastPointsOpticalFlow[i].x, lastPointsOpticalFlow[i].y, points[i].x, points[i].y);
+        }
+
+
+
+    }
+
+    //ofImTmp.setFromPixels(blank.data,blank.cols,blank.rows, OF_IMAGE_COLOR);
+
+    //return ofImTmp.getPixelsRef();
+
+
+}
 
