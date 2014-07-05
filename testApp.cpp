@@ -36,7 +36,8 @@ void testApp::setup(){
 
 
 
-
+    blendMode = 4;
+    maxBlend = 5;
 
 
     cout << "f - optical flow good features \n ";
@@ -44,6 +45,9 @@ void testApp::setup(){
     cout << "b - blob tracker \n";
     cout << "c - blob finder cv \n";
     cout << "g - background extractor \n";
+    cout << "a - loop blend mode \n";
+    cout << "w - EXPORT FRAMES \n";
+    cout << "e - EXPORT movie \n";
 
 }
 
@@ -72,7 +76,7 @@ void testApp::draw(){
 
         cv::Mat resized;
         resized = myResize (frame, scaleFloat);
-        ofIm.setFromPixels(resized.data,(int)w*scaleFloat,(int)h*scaleFloat, OF_IMAGE_COLOR);
+        ofIm.setFromPixels(resized.data,(int)sw,(int)sh, OF_IMAGE_COLOR);
 
         switch (effect) {
             case 'f':
@@ -112,9 +116,9 @@ void testApp::draw(){
                 blobFinderCV(resized);
                 break;
             case 'g':
-
                 ofIm = ofImage(bgExtract(resized));
                 ofIm.draw(0,0);
+
                 break;
 
             default:
@@ -123,9 +127,15 @@ void testApp::draw(){
 
             }
 
+            if (recordWhile) {
+                    cout << "recordwhile";
+                    ofImage screen;
+                    screen.allocate(sw,sh, OF_IMAGE_COLOR);
+                    screen.grabScreen(0,-10,sw,sh);
+                    vidRecorder.addFrame(screen);
+            }
 
     }
-
 
 }
 
@@ -138,10 +148,15 @@ void testApp::keyReleased(int key) {
 void testApp::keyPressed(int key){
 
 
-
-
-
     switch (key) {
+        case 'a':
+            if (blendMode<maxBlend)
+                blendMode++;
+            else
+                blendMode=0;
+            ofEnableBlendMode((ofBlendMode)blendMode);
+			break;
+
         case '0':
 			bLearnBakground = true;
 			effect = '0';
@@ -194,6 +209,39 @@ void testApp::keyPressed(int key){
 
             break;
 
+        case 'w':
+        case 'W':
+
+            //TODO
+            //cleanUpLastEffect();
+            //setupEffect(effect);
+
+
+            exportFrames();
+
+            break;
+
+        case OF_KEY_F10:
+
+            //TODO
+            //cleanUpLastEffect();
+            //setupEffect(effect);
+
+            recordWhile = true;
+            startExportWhile();
+
+            break;
+
+        case OF_KEY_F11:
+
+            //TODO
+            //cleanUpLastEffect();
+            //setupEffect(effect);
+
+            recordWhile = false;
+            stopExportWhile();
+
+            break;
 
         case ' ':
             {
@@ -220,24 +268,25 @@ void testApp::keyPressed(int key){
         case 's':
         case 'S':
             {
-                bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 26.0, true);
+                bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 126.0, true);
 
                 lastPointsOpticalFlow = std::vector<cv::Point2f>(MAX_FEATURES);
 
                 cv::SimpleBlobDetector::Params params;
-                params.minThreshold = 50.0f; //ants 50
-                params.maxThreshold = 100.0f; //ants 100
-                //params.minDistBetweenBlobs = 5.0f; //ants 0
-                params.filterByInertia = true;
+                params.minThreshold = 50.0f; //ants 50 - original none
+                params.maxThreshold = 100.0f; //ants 100 - original none
+                //params.minDistBetweenBlobs = 5.0f; //ants 0, original 1
+                params.filterByInertia = false; //ants true - original false
                 params.maxInertiaRatio = 10.0f; //ants 10
                 //params.minInertiaRatio = 1.0f; //ants 0
                 params.filterByConvexity = false;
+
                 params.filterByColor = true;
                 params.blobColor = 255.0f; //ants 255
                 params.filterByCircularity = false;
                 params.filterByArea = true;
-                params.minArea = 20.0f;  //ants 20
-                params.maxArea = 150.0f; //ants 150
+                params.minArea = 20.0f;  //ants 20 - original 20
+                params.maxArea = 500.0f; //ants 150 - original 500
                 simpleBlobDetector  = cv::SimpleBlobDetector(params);
 
                 effect = 's';
@@ -251,7 +300,7 @@ void testApp::keyPressed(int key){
 
                 bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 26.0, true);
                 lastPointsOpticalFlow = std::vector<cv::Point2f>(MAX_FEATURES);
-                goodFeatureDetector = cv::GoodFeaturesToTrackDetector (70);
+                goodFeatureDetector = cv::GoodFeaturesToTrackDetector (500);
                 effect = 'f';
                 ofClear(0);
             }
@@ -307,7 +356,8 @@ void testApp::keyPressed(int key){
 
         case 'g': {
             bgFrame = cv::Mat(h,w,CV_8UC3,mMovie.getPixels());
-            bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 26.0, true);
+            //bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 26.0, true);
+            bgSubtractor = cv::BackgroundSubtractorMOG2 (60, 56.0, true);
 
             //ofBackground(0,50);
             //ofEnableBlendMode (OF_BLENDMODE_MULTIPLY);
@@ -315,10 +365,15 @@ void testApp::keyPressed(int key){
             //cv::cvtColor(myResize(colorFrame, scaleFloat), bgFrame, CV_RGB2GRAY);
 
 
+            //ofEnableBlendMode (OF_BLENDMODE_DISABLED);
+
             effect = 'g';
-            ofBackground(0);
+            //ofBackground(0);
             //ofClear(0);
-            ofEnableBlendMode(OF_BLENDMODE_SCREEN);
+            //update();
+            //draw();
+            //ofEnableBlendMode ((ofBlendMode)blendMode);
+
 
             break;
         }
@@ -346,6 +401,12 @@ void testApp::keyPressed(int key){
             sh = (int)h * 0.25;
             break;
 
+
+        case '6':
+            scaleFloat =  0.6666667f;
+            sw = (int)w * 0.6666667f;
+            sh = (int)h * 0.6666667f;
+            break;
 
         case '7':
             scaleFloat =  0.7f;
@@ -422,13 +483,10 @@ void testApp::openMovie (string result) {
     if (mMovie.loadMovie(result)) {
         w = mMovie.getWidth();
         h = mMovie.getHeight();
-        sw = w;
-        sh = h;
+        sw = (int)w * scaleFloat;
+        sh = (int)h * scaleFloat;
 
-        ofIm.allocate(h,w, OF_IMAGE_COLOR);
-        ofImTmp.allocate(h,w, OF_IMAGE_COLOR);
-
-
+        ofIm.allocate(sw, sh, OF_IMAGE_COLOR);
 
         mMovie.play();
 
@@ -438,7 +496,115 @@ void testApp::openMovie (string result) {
 	}
 
 }
+void testApp::exportFrames() {
 
+        string savePath = "/dados/videos/multidao/frames/"+ofGetTimestampString()+"/";
+
+        ofDirectory dir;
+
+        dir.createDirectory (savePath, false);
+
+        int frameNumber = 0;
+
+        keyPressed(effect);//resets the effect
+
+        mMovie.setPaused(true);
+        mMovie.nextFrame();
+        mMovie.update();
+        while (mMovie.getCurrentFrame()< mMovie.getTotalNumFrames()) {
+            if (mMovie.isFrameNew()) {
+
+                cv::Mat frame(h,w,CV_8UC3,mMovie.getPixels());
+                cv::Mat resized;
+                resized = myResize (frame, scaleFloat);
+
+                draw();
+
+                string frameString;
+                ostringstream convert;
+
+                convert << setfill('0') << setw (4) << frameNumber << ".jpg";
+                frameString = convert.str();
+
+                switch (effect) {
+                    case 'f':
+                        //ofIm.draw(0,0);
+                        {
+
+                            goodOpticalFlow(resized);
+                            ofImage screen;
+                            screen.grabScreen(0,0,1280,720);
+                            screen.saveImage(savePath+frameString);
+                        }
+                        break;
+                    case 's':
+                        //ofIm.draw(0,0);
+                        {
+
+                            simpleOpticalFlow(resized);
+                            ofImage screen;
+                            screen.grabScreen(0,0,1280,720);
+                            screen.saveImage(savePath+frameString);
+                        }
+                        break;
+                    case 'p':
+                        //ofIm = ofImage(opticalFlow(resized));
+                        ofIm.draw(0,0);
+                        break;
+                    case 'b':
+                        {
+                        blobTracker(resized);
+                        ofImage screen;
+                        screen.grabScreen(0,0,1280,720);
+                        screen.saveImage(savePath+frameString);
+                        break;
+
+                        }
+                    case 'c':
+                        {
+                            blobFinderCV(resized);
+                            //ofIm.draw(0,0);
+                        }
+                        break;
+                    case 'l':
+                        //ofIm = ofImage(houghLinesS(resized));
+                        break;
+                    case '.':
+                        //ofIm = ofImage(houghLinesP(resized));
+                        break;
+                    case 't':
+                        //ofIm = ofImage(discreteFourierTransform(resized));
+                        break;
+                    case 'g':
+                        //ofIm = ofImage(bgExtract(resized));
+                        //vidRecorder.addFrame(ofIm.getPixelsRef());
+                        //ofIm.draw(0,0);
+                        ofIm = ofImage(bgExtract(resized));
+                        ofIm.draw(0,0);
+                        ofImage screen;
+                        screen.grabScreen(0,0,1280,720);
+                        screen.saveImage(savePath+frameString);
+                        break;
+                    }
+
+
+                //redraw();
+
+                mMovie.nextFrame();
+                mMovie.update();
+                cout << mMovie.getCurrentFrame() << "\n";
+                //frameNumber = mMovie.getCurrentFrame();
+                frameNumber++;
+            } else {
+                mMovie.update();
+                //ofSleepMillis(1);
+            }
+
+        }
+
+
+
+}
 
 void testApp::exportMovie() {
 
@@ -452,28 +618,32 @@ void testApp::exportMovie() {
         mMovie.setPaused(true);
         mMovie.firstFrame();
 
-        if ((mMovie.getTotalNumFrames()!=0)&&(mMovie.getDuration()!=0)) {
-            rate =  mMovie.getTotalNumFrames() / mMovie.getDuration() ;
+//        if ((mMovie.getTotalNumFrames()!=0)&&(mMovie.getDuration()!=0)) {
+//            rate =  mMovie.getTotalNumFrames() / mMovie.getDuration() ;
+//
+//        } else {
+//
+//            rate =  29.97 ;
+//
+//        }
 
-        } else {
+        rate = 24;
 
-            rate =  29.97 ;
-
-        }
-
+        cout << "rate " << rate;
 
         //cout << "rate: " << rate;
 
-        string saveFileName = "/dados/_SESC/timelapses/testMovie";
-        fileExt = ".avi"; // ffmpeg uses the extension to determine the container type. run 'ffmpeg -formats' to see supported formats
+        string saveFileName = "/dados/videos/multidao/testMovie";
+        fileExt = ".mov"; // ffmpeg uses the extension to determine the container type. run 'ffmpeg -formats' to see supported formats
 
         // override the default codecs if you like
         // run 'ffmpeg -codecs' to find out what your implementation supports (or -formats on some older versions)
         //vidRecorder.setVideoCodec("copy");
         //vidRecorder.setVideoCodec("copy");
-        vidRecorder.setVideoCodec("msmpeg4v2");
-        vidRecorder.setPixelFormat("rgb24");
-        //vidRecorder.setVideoCodec("mjpeg");
+        //vidRecorder.setVideoCodec("msmpeg4v2");
+        //vidRecorder.setVideoCodec("libx264");
+        //vidRecorder.setPixelFormat("rgb24");
+        vidRecorder.setVideoCodec("mjpeg");
         vidRecorder.setVideoBitrate("50000k");
         vidRecorder.setAudioCodec("libmp3lame");
 
@@ -501,7 +671,8 @@ void testApp::exportMovie() {
                         {
                         blobTracker(resized);
                         ofImage screen;
-                        screen.grabScreen(0,0,1920,1080);
+                        screen.allocate(1280,720, OF_IMAGE_COLOR);
+                        screen.grabScreen(0,0,1280,720);
                         vidRecorder.addFrame(screen);
                         break;
 
@@ -522,9 +693,17 @@ void testApp::exportMovie() {
                         //ofIm = ofImage(discreteFourierTransform(resized));
                         break;
                     case 'g':
-                        ofIm = ofImage(bgExtract(resized));
-                        vidRecorder.addFrame(ofIm.getPixelsRef());
-                        ofIm.draw(0,0);
+                        //ofIm = ofImage(bgExtract(resized));
+                        //vidRecorder.addFrame(ofIm.getPixelsRef());
+                        //ofIm.draw(0,0);
+                        ofImage ofI;
+                        ofI.allocate (sw,sh, OF_IMAGE_COLOR);
+                        ofI = bgExtract(resized);
+//                        fbo.begin();
+//                        ofIm.draw(0,0);
+//                        fbo.readToPixels(pixels);
+//                        fbo.end();
+                        vidRecorder.addFrame(ofI.getPixelsRef());
                         break;
                     }
 
@@ -533,7 +712,7 @@ void testApp::exportMovie() {
 
                 mMovie.nextFrame();
                 mMovie.update();
-                cout << mMovie.getCurrentFrame() << "\n";
+                cout << mMovie.getCurrentFrame() << " "<< mMovie.getTotalNumFrames() << "\n";
             } else {
                 mMovie.update();
                 //ofSleepMillis(1);
@@ -545,6 +724,61 @@ void testApp::exportMovie() {
         ofSystemAlertDialog("done");
 
 
+}
+
+void testApp::startExportWhile() {
+
+        float rate;
+
+        if (!mMovie.isLoaded()) {
+            ofSystemAlertDialog("please load a movie first");
+            return;
+        }
+
+        //mMovie.setPaused(true);
+//        mMovie.firstFrame();
+
+//        if ((mMovie.getTotalNumFrames()!=0)&&(mMovie.getDuration()!=0)) {
+//            rate =  mMovie.getTotalNumFrames() / mMovie.getDuration() ;
+//
+//        } else {
+//
+//            rate =  29.97 ;
+//
+//        }
+
+        rate = 24;
+
+        cout << "rate " << rate << "\n";
+
+        //cout << "rate: " << rate;
+
+        string saveFileName = "/dados/videos/multidao/testMovie";
+        fileExt = ".mov"; // ffmpeg uses the extension to determine the container type. run 'ffmpeg -formats' to see supported formats
+
+        // override the default codecs if you like
+        // run 'ffmpeg -codecs' to find out what your implementation supports (or -formats on some older versions)
+        //vidRecorder.setVideoCodec("copy");
+        //vidRecorder.setVideoCodec("copy");
+        //vidRecorder.setVideoCodec("msmpeg4v2");
+        //vidRecorder.setVideoCodec("libx264");
+        //vidRecorder.setPixelFormat("rgb24");
+        vidRecorder.setVideoCodec("mjpeg");
+        vidRecorder.setVideoBitrate("50000k");
+        vidRecorder.setAudioCodec("libmp3lame");
+
+        vidRecorder.setAudioBitrate("192k");
+
+        vidRecorder.setup(saveFileName+ofGetTimestampString()+fileExt,sw, sh, rate,44100,0);
+
+        //mMovie.setPaused(false);
+        //mMovie.update();
+        cout << "fim do start export while " << sw << "\n";
+
+}
+
+void testApp::stopExportWhile() {
+    vidRecorder.close();
 }
 
 cv::Mat testApp::myResize (cv::Mat src, float s) {
@@ -567,7 +801,7 @@ cv::Mat testApp::myResize (cv::Mat src, float s) {
 
 
 
-ofPixelsRef testApp::bgExtract (cv::Mat color_img) {
+ofImage testApp::bgExtract (cv::Mat color_img) {
 
     int th = color_img.rows;
     int tw = color_img.cols;
@@ -609,7 +843,7 @@ ofPixelsRef testApp::bgExtract (cv::Mat color_img) {
 
     //ofImTmp.setFromPixels(color_img.data,imgReturn.cols,imgReturn.rows, OF_IMAGE_COLOR);
     ofImTmp.setFromPixels(imgReturn.data,imgReturn.cols,imgReturn.rows, OF_IMAGE_COLOR);
-    return ofImTmp.getPixelsRef();
+    return ofImTmp;
 
 }
 
@@ -714,6 +948,8 @@ void testApp::goodOpticalFlow (cv::Mat color_img) {
     // beautiful glitch when initiliaze this way cv::Mat blank(h,w,CV_8UC3);
     //cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
 
+    //not subtracting when we have a good clean bg
+    //cv::cvtColor(color_img, bgMask, CV_RGB2GRAY);
     cv::cvtColor(color_img, grey_img, CV_RGB2GRAY);
     bgSubtractor(grey_img,bgMask);
 
@@ -730,10 +966,9 @@ void testApp::goodOpticalFlow (cv::Mat color_img) {
         }
         std::vector<cv::Point2f> points(MAX_FEATURES); // 500 corners as max
 
-        cv::TermCriteria tc (cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
+        //cv::TermCriteria tc (cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
 
-        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,bgMask,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11),
-                                 3,tc,0,0.1);
+        cv::calcOpticalFlowPyrLK(lastImgOpticalFlow,bgMask,lastPointsOpticalFlow,points,status, errors, cv::Size(11,11));
 
         lastImgOpticalFlow= bgMask.clone();
 
@@ -775,6 +1010,8 @@ void testApp::simpleOpticalFlow (cv::Mat color_img) {
     // beautiful glitch when initiliaze this way cv::Mat blank(h,w,CV_8UC3);
     //cv::Mat blank(color_img.rows,color_img.cols,CV_8UC3, cv::Scalar(50,50,50));
 
+    //not subtracting when we have a good clean bg
+    //cv::cvtColor(color_img, bgMask, CV_RGB2GRAY);
     cv::cvtColor(color_img, grey_img, CV_RGB2GRAY);
     bgSubtractor(grey_img,bgMask);
 

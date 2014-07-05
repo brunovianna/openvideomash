@@ -7,6 +7,9 @@
 
 
 #include "opencv2/video/background_segm.hpp"
+#include "imgproc.hpp"
+
+
 
 //#define _USE_LIVE_VIDEO		// uncomment this to use a live camera
 								// otherwise, we'll use a movie file
@@ -45,8 +48,8 @@ class testApp : public ofBaseApp{
 		bool				bLearnBakground;
 
 		char effect = '1';
-		char scale ='1';
-		float scaleFloat = 0.7;
+		char scale ='6';
+		float scaleFloat = 0.666667;
 
         void openMovie (string result);
         int w, h, sw, sh;
@@ -56,6 +59,10 @@ class testApp : public ofBaseApp{
 
         ofxVideoRecorder    vidRecorder;
         void exportMovie ();
+        void exportFrames();
+        void startExportWhile();
+        void stopExportWhile();
+        bool recordWhile = false;
 
         ofVideoPlayer 		mMovie;
 
@@ -65,7 +72,7 @@ class testApp : public ofBaseApp{
         cv::Mat bgFrame;
         cv::Mat oldBinary;
 
-        ofPixelsRef bgExtract(cv::Mat color_img);
+        ofImage bgExtract(cv::Mat color_img);
         void blobTracker(cv::Mat color_img);
         void blobFinderCV(cv::Mat color_img);
 
@@ -83,6 +90,10 @@ class testApp : public ofBaseApp{
 
         cv::BackgroundSubtractorMOG2 bgSubtractor;
         vector<ofxCvBlob>  lastBlobs;
+
+        ofFbo fbo;
+
+        int blendMode, maxBlend;
 
 
 };
